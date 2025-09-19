@@ -6,7 +6,7 @@ import TopStates from './components/TopStatesChart';
 import EstadoList from './components/EstadoList';
 import CidadeList from './components/CidadeList';
 import InfoPanel from './components/InfoPanel';
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'https://cassino-back.onrender.com';
 
 function App() {
   const [estados, setEstados] = useState([]);
