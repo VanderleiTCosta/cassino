@@ -6,6 +6,7 @@ import TopStates from './components/TopStatesChart';
 import EstadoList from './components/EstadoList';
 import CidadeList from './components/CidadeList';
 import InfoPanel from './components/InfoPanel';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 function App() {
   const [estados, setEstados] = useState([]);
@@ -21,7 +22,7 @@ function App() {
 
   // Busca estados
   useEffect(() => {
-    axios.get('http://localhost:5000/api/estados').then(res => setEstados(res.data));
+    axios.get('${API_URL}/api/estados').then(res => setEstados(res.data));
   }, []);
 
   // Busca cidades ao selecionar estado
@@ -30,7 +31,7 @@ function App() {
       setIsLoadingCidades(true);
       setSelectedCidade(null);
       setSuggestedIpInfo(null);
-      axios.get(`http://localhost:5000/api/cidades/${selectedEstado.sigla}`)
+      axios.get(`${API_URL}/api/cidades/${selectedEstado.sigla}`)
         .then(res => setCidades(res.data))
         .finally(() => setIsLoadingCidades(false));
     }
@@ -40,7 +41,7 @@ function App() {
   useEffect(() => {
     if (selectedCidade && selectedEstado) {
       setIsLoadingIp(true);
-      axios.get(`http://localhost:5000/api/ip/${selectedEstado.sigla}/${selectedCidade.nome}`)
+      axios.get(`${API_URL}/api/ip/${selectedEstado.sigla}/${selectedCidade.nome}`)
         .then(res => setSuggestedIpInfo(res.data))
         .finally(() => setIsLoadingIp(false));
     }
@@ -51,7 +52,7 @@ function App() {
     if (platformKeyword) {
       setIsLoadingTrends(true);
       setTrendsData([]);
-      axios.get(`http://localhost:5000/api/trends/${platformKeyword}`)
+      axios.get(`${API_URL}/api/trends/${platformKeyword}`)
         .then(res => setTrendsData(res.data))
         .finally(() => setIsLoadingTrends(false));
     }

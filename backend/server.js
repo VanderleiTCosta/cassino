@@ -5,7 +5,6 @@ const cors = require("cors");
 const axios = require("axios");
 
 const app = express();
-const PORT = 5000;
 
 app.use(cors());
 
@@ -312,8 +311,7 @@ app.get("/api/trends/:keyword", (req, res) => {
   res.json(randomTrends);
 });
 
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(
-    `🚀 Backend final rodando na porta ${PORT} com dados dinâmicos simulados.`
-  );
+    console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
