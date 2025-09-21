@@ -15,7 +15,7 @@ const AnalysisPanel = ({ trendsData, clickData, platform }) => {
   // Desestrutura os dados de cliques, com valores padrão para segurança
   const { total: totalClicks = 0, breakdown: allClicks = [] } = clickData || {};
 
-  // --- LÓGICA CONECTADA ---
+  // --- NOVA LÓGICA CONECTADA ---
 
   // 1. Encontra os 5 estados com maior interesse de busca
   const top5StatesByInterest = [...trendsData]
