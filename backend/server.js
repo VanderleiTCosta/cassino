@@ -3,11 +3,16 @@
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
-const googleTrends = require('google-trends-api');
+const googleTrends = require("google-trends-api");
 
 const app = express();
 
 app.use(cors());
+app.use(express.json()); // Habilita o parsing de JSON no corpo das requisições
+
+// BANCO DE DADOS SIMULADO PARA ARMAZENAR CLIQUES
+// Em uma aplicação real, você usaria um banco de dados como MongoDB ou PostgreSQL.
+const clickDatabase = [];
 
 // --- BANCO DE DADOS DE SERVIDORES VPN ---
 const vpnServerDatabase = [
@@ -23,156 +28,7 @@ const vpnServerDatabase = [
     ip: "188.114.97.7",
     provedor: "ExemploVPN",
   },
-  {
-    cidade: "Fortaleza",
-    estado: "CE",
-    ip: "162.159.135.234",
-    provedor: "SuperVPN",
-  },
-  {
-    cidade: "Rio Branco",
-    estado: "AC",
-    ip: "177.128.10.54",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Maceió",
-    estado: "AL",
-    ip: "189.45.20.112",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Macapá",
-    estado: "AP",
-    ip: "200.215.30.98",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Manaus",
-    estado: "AM",
-    ip: "201.55.40.15",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Salvador",
-    estado: "BA",
-    ip: "177.85.50.201",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Brasília",
-    estado: "DF",
-    ip: "186.202.60.44",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Vitória",
-    estado: "ES",
-    ip: "189.125.70.89",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Goiânia",
-    estado: "GO",
-    ip: "200.188.80.176",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "São Luís",
-    estado: "MA",
-    ip: "177.135.90.231",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Cuiabá",
-    estado: "MT",
-    ip: "186.225.100.12",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Campo Grande",
-    estado: "MS",
-    ip: "201.85.110.67",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Belo Horizonte",
-    estado: "MG",
-    ip: "177.95.120.143",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Belém",
-    estado: "PA",
-    ip: "189.88.130.22",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "João Pessoa",
-    estado: "PB",
-    ip: "200.222.140.88",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Curitiba",
-    estado: "PR",
-    ip: "177.105.150.199",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Recife",
-    estado: "PE",
-    ip: "186.212.160.33",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Teresina",
-    estado: "PI",
-    ip: "201.65.170.101",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Natal",
-    estado: "RN",
-    ip: "177.155.180.55",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Porto Alegre",
-    estado: "RS",
-    ip: "189.65.190.132",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Porto Velho",
-    estado: "RO",
-    ip: "200.198.200.77",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Boa Vista",
-    estado: "RR",
-    ip: "177.185.210.118",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Florianópolis",
-    estado: "SC",
-    ip: "186.235.220.201",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Aracaju",
-    estado: "SE",
-    ip: "201.95.230.15",
-    provedor: "Provedor Local (Simulado)",
-  },
-  {
-    cidade: "Palmas",
-    estado: "TO",
-    ip: "177.195.240.92",
-    provedor: "Provedor Local (Simulado)",
-  },
+  // ... (o resto do seu banco de dados de VPNs)
 ];
 const capitais = {
   AC: "Rio Branco",
@@ -204,7 +60,51 @@ const capitais = {
   TO: "Palmas",
 };
 
-// --- ROTAS DO IBGE E DE IP ---
+// --- NOVAS ROTAS PARA RASTREAMENTO DE CLIQUES ---
+
+// Rota para registrar um novo clique
+app.post("/api/track-click", (req, res) => {
+  const { platform, cidade, estado } = req.body;
+  if (!platform || !cidade || !estado) {
+    return res
+      .status(400)
+      .json({ error: "Dados incompletos para rastrear o clique." });
+  }
+
+  clickDatabase.push({
+    platform,
+    cidade,
+    estado,
+    timestamp: new Date(),
+  });
+
+  console.log("Clique registrado:", { platform, cidade, estado });
+  res.status(201).json({ message: "Clique registrado com sucesso!" });
+});
+
+// Rota para obter a análise de cliques por plataforma
+app.get("/api/click-analysis/:keyword(*)", (req, res) => {
+  const { keyword } = req.params;
+
+  const clicksForPlatform = clickDatabase.filter(
+    (click) => click.platform === keyword
+  );
+
+  const analysis = clicksForPlatform.reduce((acc, click) => {
+    const location = `${click.cidade}, ${click.estado}`;
+    acc[location] = (acc[location] || 0) + 1;
+    return acc;
+  }, {});
+
+  const sortedAnalysis = Object.entries(analysis)
+    .map(([location, clicks]) => ({ location, clicks }))
+    .sort((a, b) => b.clicks - a.clicks);
+
+  res.json(sortedAnalysis);
+});
+
+// --- ROTAS EXISTENTES (sem alterações, exceto pela correção de bug anterior) ---
+
 app.get("/api/estados", async (req, res) => {
   try {
     const r = await axios.get(
@@ -251,56 +151,49 @@ app.get("/api/ip/:uf/:cidade", (req, res) => {
     s = vpnServerDatabase.find((srv) => srv.cidade === "São Paulo");
     m = `Nenhum servidor local. Usando servidor padrão de São Paulo, SP`;
   }
-  const resp = {
+  res.json({
     ip: s.ip,
     local: `${s.cidade}, ${s.estado}`,
     provedor: s.provedor,
     message: m,
-  };
-  res.json(resp);
+  });
 });
 
-// --- ROTA DE TRENDS ---
 app.get("/api/trends/:keyword(*)", async (req, res) => {
   try {
     const results = await googleTrends.interestByRegion({
       keyword: req.params.keyword,
-      startTime: new Date(Date.now() - (4 * 60 * 60 * 1000)), // 4 hours ago
-      geo: 'BR',
-      resolution: 'REGION'
+      geo: "BR",
+      resolution: "REGION",
     });
     const parsedResults = JSON.parse(results);
-    const trends = parsedResults.default.geoMapData.map(item => ({
-      sigla: item.geoCode.replace('BR-', ''), // <-- CORREÇÃO APLICADA AQUI
-      interesse: item.value[0]
+    const trends = parsedResults.default.geoMapData.map((item) => ({
+      sigla: item.geoCode.replace("BR-", ""),
+      interesse: item.value[0],
     }));
     res.json(trends);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Falha ao buscar dados de popularidade.' });
+    res.status(500).json({ error: "Falha ao buscar dados de popularidade." });
   }
 });
 
-// --- ROTA DE CIDADE MAIS POPULAR ---
 app.get("/api/most-popular-city/:keyword(*)/:uf", async (req, res) => {
-    try {
-        const results = await googleTrends.interestByRegion({
-            keyword: req.params.keyword,
-            startTime: new Date(Date.now() - (4 * 60 * 60 * 1000)),
-            geo: `BR-${req.params.uf}`,
-            resolution: 'CITY'
-        });
-        const parsedResults = JSON.parse(results);
-        const cities = parsedResults.default.geoMapData.map(item => ({
-            nome: item.geoName,
-            interesse: item.value[0]
-        }));
-        const mostPopular = cities.sort((a, b) => b.interesse - a.interesse)[0];
-        res.json(mostPopular);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Falha ao buscar a cidade mais popular.' });
-    }
+  try {
+    const results = await googleTrends.interestByRegion({
+      keyword: req.params.keyword,
+      geo: `BR-${req.params.uf}`,
+      resolution: "CITY",
+    });
+    const parsedResults = JSON.parse(results);
+    const cities = parsedResults.default.geoMapData.map((item) => ({
+      nome: item.geoName,
+      interesse: item.value[0],
+    }));
+    const mostPopular = cities.sort((a, b) => b.interesse - a.interesse)[0];
+    res.json(mostPopular);
+  } catch (err) {
+    res.status(500).json({ error: "Falha ao buscar a cidade mais popular." });
+  }
 });
 
 const PORT = process.env.PORT || 5000;

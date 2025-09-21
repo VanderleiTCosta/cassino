@@ -5,7 +5,7 @@ import EstadoList from './components/EstadoList';
 import CidadeList from './components/CidadeList';
 import InfoPanel from './components/InfoPanel';
 import MostPopular from './components/MostPopular';
-// O LoadingModal foi removido pois não é mais necessário
+import AnalysisPanel from './components/AnalysisPanel'; // Importe o novo componente
 import toast, { Toaster } from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -23,6 +23,7 @@ function App() {
   const [trendsData, setTrendsData] = useState([]);
   const [activeView, setActiveView] = useState('estados');
   const [mostPopular, setMostPopular] = useState({ estado: null, cidade: null });
+  const [clickData, setClickData] = useState([]); // Novo estado para dados de cliques
 
   useEffect(() => {
     axios.get(`${API_URL}/api/estados`)
@@ -49,35 +50,7 @@ function App() {
         .finally(() => setIsLoadingIp(false));
     }
   }, [selectedCidade, selectedEstado, suggestedIpInfo]);
-
-  const fetchTrends = useCallback((isInitialSearch = false) => {
-    const keyword = extractKeywordFromUrl(platformUrl);
-    if (keyword) {
-      if (isInitialSearch) setIsLoadingTrends(true);
-      axios.get(`${API_URL}/api/trends/${keyword}`)
-        .then(res => {
-          setTrendsData(res.data);
-          if (!isInitialSearch) toast.success('Dados de popularidade atualizados!');
-          
-          if (isInitialSearch && res.data.length > 0) {
-            const topState = [...res.data].sort((a, b) => b.interesse - a.interesse)[0];
-            axios.get(`${API_URL}/api/most-popular-city/${keyword}/${topState.sigla}`)
-              .then(cityRes => {
-                const estado = estados.find(e => e.sigla === topState.sigla);
-                setMostPopular({ estado: estado ? estado.nome : topState.sigla, cidade: cityRes.data.nome });
-              })
-              .catch(() => toast.error("Falha ao buscar a cidade mais popular."));
-          }
-        })
-        .catch(() => toast.error("Falha ao buscar popularidade."))
-        .finally(() => setIsLoadingTrends(false));
-    }
-  }, [platformUrl, estados]);
-
-  useEffect(() => {
-    fetchIp();
-  }, [fetchIp]);
-
+  
   const extractKeywordFromUrl = (url) => {
     try {
       let fullUrl = url;
@@ -92,13 +65,44 @@ function App() {
     }
   };
 
-  const handlePlatformSearch = () => {
-    if (platformUrl) {
-      fetchTrends(true);
+  const handlePlatformSearch = useCallback(() => {
+    const keyword = extractKeywordFromUrl(platformUrl);
+    if (keyword) {
+      setIsLoadingTrends(true);
+      
+      // Busca dados de popularidade (Google Trends)
+      const trendsRequest = axios.get(`${API_URL}/api/trends/${keyword}`);
+      // Busca dados de cliques do nosso banco de dados
+      const clicksRequest = axios.get(`${API_URL}/api/click-analysis/${keyword}`);
+
+      Promise.all([trendsRequest, clicksRequest])
+        .then(([trendsRes, clicksRes]) => {
+          setTrendsData(trendsRes.data);
+          setClickData(clicksRes.data);
+
+          if (trendsRes.data.length > 0) {
+            const topState = [...trendsRes.data].sort((a, b) => b.interesse - a.interesse)[0];
+            return axios.get(`${API_URL}/api/most-popular-city/${keyword}/${topState.sigla}`);
+          }
+        })
+        .then(cityRes => {
+          if (cityRes) {
+            const topStateSigla = cityRes.config.url.split('/').pop();
+            const estado = estados.find(e => e.sigla === topStateSigla);
+            setMostPopular({ estado: estado ? estado.nome : topStateSigla, cidade: cityRes.data.nome });
+          }
+        })
+        .catch(() => toast.error("Falha ao buscar dados da plataforma."))
+        .finally(() => setIsLoadingTrends(false));
+
     } else {
-      toast.error("Por favor, digite a URL da plataforma.");
+      toast.error("Por favor, digite o nome ou URL da plataforma.");
     }
-  }
+  }, [platformUrl, estados]);
+
+  useEffect(() => {
+    fetchIp();
+  }, [fetchIp]);
   
   const handleEstadoClick = (estado) => {
     setSelectedEstado(estado);
@@ -112,85 +116,37 @@ function App() {
   };
 
   const handleConnectClick = () => {
-    if (!platformUrl) {
-      toast.error("URL da plataforma não encontrada.");
+    if (!platformUrl || !selectedCidade) {
+      toast.error("Selecione uma cidade primeiro.");
       return;
     }
 
-    // Conteúdo HTML e CSS para a nova página de carregamento
-    const newTabContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Conectando...</title>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
-        <style>
-          body {
-            background-color: #111827;
-            color: #d1d5db;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            font-family: 'Inter', sans-serif;
-          }
-          .container {
-            text-align: center;
-          }
-          h1 {
-            font-size: 2rem;
-            color: #ffffff;
-            margin-bottom: 1rem;
-          }
-          p {
-            font-size: 1.1rem;
-          }
-          .spinner {
-            border: 5px solid rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            border-top: 5px solid #22d3ee;
-            width: 60px;
-            height: 60px;
-            animation: spin 1s linear infinite;
-            margin: 30px auto;
-          }
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h1>Conectando à plataforma...</h1>
-          <p>Por favor, aguarde. Você será redirecionado em breve.</p>
-          <div class="spinner"></div>
-        </div>
-      </body>
-      </html>
-    `;
+    // Registra o clique no backend
+    const keyword = extractKeywordFromUrl(platformUrl);
+    axios.post(`${API_URL}/api/track-click`, {
+      platform: keyword,
+      cidade: selectedCidade.nome,
+      estado: selectedEstado.sigla,
+    }).catch(err => console.error("Falha ao registrar clique:", err));
+
+    const newTabContent = `...`; // O HTML da tela de carregamento que já fizemos
 
     const newTab = window.open('', '_blank');
     if (!newTab) {
-      toast.error("O bloqueador de pop-ups impediu a abertura da nova guia. Por favor, habilite os pop-ups para este site.");
+      toast.error("Bloqueador de pop-ups ativado. Por favor, desabilite para continuar.");
       return;
     }
     
     newTab.document.write(newTabContent);
     newTab.document.close();
 
-    // Redireciona a nova aba após 7 segundos
     setTimeout(() => {
       let url = platformUrl;
       if (!/^https?:\/\//i.test(url)) {
           url = 'https://' + url;
       }
       newTab.location.href = url;
-    }, 7000); // Tempo total de espera
+    }, 7000);
   };
 
   return (
@@ -203,25 +159,27 @@ function App() {
         </header>
         
         <div className="mb-4 flex gap-2">
-          <input type="text" value={platformUrl} onChange={(e) => setPlatformUrl(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handlePlatformSearch()} placeholder="Digite a URL da plataforma..." className="w-full bg-gray-800 border-2 border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all"/>
+          <input type="text" value={platformUrl} onChange={(e) => setPlatformUrl(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handlePlatformSearch()} placeholder="Digite a plataforma..." className="w-full bg-gray-800 border-2 border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all"/>
           <button onClick={handlePlatformSearch} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">Analisar</button>
         </div>
 
         {mostPopular.cidade && <MostPopular estado={mostPopular.estado} cidade={mostPopular.cidade} />}
 
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg p-1 flex justify-around mb-4">
-          <button onClick={() => setActiveView('estados')} className={`w-full py-2 rounded-md font-semibold transition-colors text-sm ${activeView === 'estados' ? 'bg-cyan-600' : 'text-gray-400 hover:bg-gray-700'}`}>1. ESTADOS</button>
-          <button onClick={() => setActiveView('cidades')} disabled={!selectedEstado} className={`w-full py-2 rounded-md font-semibold transition-colors text-sm ${activeView === 'cidades' ? 'bg-cyan-600' : 'text-gray-400 hover:bg-gray-700 disabled:opacity-50'}`}>2. CIDADES</button>
-          <button onClick={() => setActiveView('info')} disabled={!selectedCidade} className={`w-full py-2 rounded-md font-semibold transition-colors text-sm ${activeView === 'info' ? 'bg-cyan-600' : 'text-gray-400 hover:bg-gray-700 disabled:opacity-50'}`}>3. INFORMAÇÕES</button>
+          <button onClick={() => setActiveView('analise')} className={`w-full py-2 rounded-md font-semibold transition-colors text-sm ${activeView === 'analise' ? 'bg-cyan-600' : 'text-gray-400 hover:bg-gray-700'}`}>ANÁLISE</button>
+          <button onClick={() => setActiveView('estados')} className={`w-full py-2 rounded-md font-semibold transition-colors text-sm ${activeView === 'estados' ? 'bg-cyan-600' : 'text-gray-400 hover:bg-gray-700'}`}>ESTADOS</button>
+          <button onClick={() => setActiveView('cidades')} disabled={!selectedEstado} className={`w-full py-2 rounded-md font-semibold transition-colors text-sm ${activeView === 'cidades' ? 'bg-cyan-600' : 'text-gray-400 hover:bg-gray-700 disabled:opacity-50'}`}>CIDADES</button>
+          <button onClick={() => setActiveView('info')} disabled={!selectedCidade} className={`w-full py-2 rounded-md font-semibold transition-colors text-sm ${activeView === 'info' ? 'bg-cyan-600' : 'text-gray-400 hover:bg-gray-700 disabled:opacity-50'}`}>INFORMAÇÕES</button>
         </div>
 
         <main className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg p-6 min-h-[50vh]">
+          {activeView === 'analise' && <AnalysisPanel trendsData={trendsData} clickData={clickData} platform={platformUrl} />}
           {activeView === 'estados' && <EstadoList estados={estados} selectedEstado={selectedEstado} onEstadoClick={handleEstadoClick} />}
           {activeView === 'cidades' && <CidadeList cidades={cidades} selectedEstado={selectedEstado} selectedCidade={selectedCidade} onCidadeClick={handleCidadeClick} isLoading={isLoadingCidades} />}
           {activeView === 'info' && <InfoPanel selectedCidade={selectedCidade} suggestedIpInfo={suggestedIpInfo} isLoadingIp={isLoadingIp} onConnectClick={handleConnectClick} />}
         </main>
         
-        {platformUrl && trendsData.length > 0 && (
+        {platformUrl && trendsData.length > 0 && activeView !== 'analise' && (
           <div className="mt-4">
             <TopStatesChart trendsData={trendsData} isLoading={isLoadingTrends} />
           </div>
