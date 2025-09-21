@@ -271,7 +271,7 @@ app.get("/api/trends/:keyword(*)", async (req, res) => {
     });
     const parsedResults = JSON.parse(results);
     const trends = parsedResults.default.geoMapData.map(item => ({
-      sigla: item.geoCode,
+      sigla: item.geoCode.replace('BR-', ''), // <-- CORREÇÃO APLICADA AQUI
       interesse: item.value[0]
     }));
     res.json(trends);
