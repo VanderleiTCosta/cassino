@@ -3,50 +3,11 @@
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
+const googleTrends = require('google-trends-api');
 
 const app = express();
 
 app.use(cors());
-
-// --- FUNÇÃO PARA GERAR DADOS DE POPULARIDADE ALEATÓRIOS ---
-function generateRandomTrends() {
-  const estadosSiglas = [
-    "AC",
-    "AL",
-    "AP",
-    "AM",
-    "BA",
-    "CE",
-    "DF",
-    "ES",
-    "GO",
-    "MA",
-    "MT",
-    "MS",
-    "MG",
-    "PA",
-    "PB",
-    "PR",
-    "PE",
-    "PI",
-    "RJ",
-    "RN",
-    "RS",
-    "RO",
-    "RR",
-    "SC",
-    "SP",
-    "SE",
-    "TO",
-  ];
-  const trends = estadosSiglas.map((sigla) => ({
-    sigla: sigla,
-    interesse: Math.floor(Math.random() * 80) + 20,
-  }));
-  const topStateIndex = Math.floor(Math.random() * trends.length);
-  trends[topStateIndex].interesse = 100;
-  return trends;
-}
 
 // --- BANCO DE DADOS DE SERVIDORES VPN ---
 const vpnServerDatabase = [
@@ -300,13 +261,47 @@ app.get("/api/ip/:uf/:cidade", (req, res) => {
 });
 
 // --- ROTA DE TRENDS QUE GERA DADOS ALEATÓRIOS ---
-app.get("/api/trends/:keyword", (req, res) => {
-  const randomTrends = generateRandomTrends();
-  console.log(
-    `Buscando popularidade para "${req.params.keyword}". Retornando dados aleatórios.`
-  );
-  res.json(randomTrends);
+app.get("/api/trends/:keyword", async (req, res) => {
+  try {
+    const results = await googleTrends.interestByRegion({
+      keyword: req.params.keyword,
+      startTime: new Date(Date.now() - (4 * 60 * 60 * 1000)), // 4 hours ago
+      geo: 'BR',
+      resolution: 'REGION'
+    });
+    const parsedResults = JSON.parse(results);
+    const trends = parsedResults.default.geoMapData.map(item => ({
+      sigla: item.geoCode,
+      interesse: item.value[0]
+    }));
+    res.json(trends);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Falha ao buscar dados de popularidade.' });
+  }
 });
+
+app.get("/api/most-popular-city/:keyword/:uf", async (req, res) => {
+    try {
+        const results = await googleTrends.interestByRegion({
+            keyword: req.params.keyword,
+            startTime: new Date(Date.now() - (4 * 60 * 60 * 1000)),
+            geo: `BR-${req.params.uf}`,
+            resolution: 'CITY'
+        });
+        const parsedResults = JSON.parse(results);
+        const cities = parsedResults.default.geoMapData.map(item => ({
+            nome: item.geoName,
+            interesse: item.value[0]
+        }));
+        const mostPopular = cities.sort((a, b) => b.interesse - a.interesse)[0];
+        res.json(mostPopular);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Falha ao buscar a cidade mais popular.' });
+    }
+});
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

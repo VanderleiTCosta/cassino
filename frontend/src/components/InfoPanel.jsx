@@ -1,7 +1,15 @@
 import React from 'react';
 import { FaInfoCircle, FaExclamationTriangle, FaWifi } from 'react-icons/fa';
 
-const InfoPanel = ({ selectedCidade, suggestedIpInfo, isLoadingIp }) => {
+const InfoPanel = ({ selectedCidade, suggestedIpInfo, isLoadingIp, platformUrl }) => {
+
+  const handleConnect = () => {
+    if (platformUrl) {
+      window.location.href = platformUrl;
+    }
+  };
+
+
   if (!selectedCidade) {
     return (
         <div className="flex flex-col items-center justify-center h-full text-gray-600 text-center">
@@ -33,6 +41,12 @@ const InfoPanel = ({ selectedCidade, suggestedIpInfo, isLoadingIp }) => {
             )}
           </div>
         </div>
+        <button 
+          onClick={handleConnect} 
+          className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-6 rounded-lg transition-colors mt-4"
+        >
+          Conectar com este IP
+        </button>
         <div className="bg-red-900/50 border border-red-500 text-red-300 p-3 rounded-md mt-auto">
           <h3 className="font-bold flex items-center gap-2"><FaExclamationTriangle /> Aviso Importante</h3>
           <p className="text-sm mt-1">O uso de VPN pode violar os Termos de Serviço e resultar no bloqueio de sua conta e perda de fundos.</p>

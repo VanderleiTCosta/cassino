@@ -5,6 +5,7 @@ import TopStatesChart from './components/TopStatesChart';
 import EstadoList from './components/EstadoList';
 import CidadeList from './components/CidadeList';
 import InfoPanel from './components/InfoPanel';
+import MostPopular from './components/MostPopular';
 import toast, { Toaster } from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -18,9 +19,10 @@ function App() {
   const [isLoadingIp, setIsLoadingIp] = useState(false);
   const [isLoadingTrends, setIsLoadingTrends] = useState(false);
   const [suggestedIpInfo, setSuggestedIpInfo] = useState(null);
-  const [platformKeyword, setPlatformKeyword] = useState('');
+  const [platformUrl, setPlatformUrl] = useState('');
   const [trendsData, setTrendsData] = useState([]);
   const [activeView, setActiveView] = useState('estados');
+  const [mostPopular, setMostPopular] = useState({ estado: null, cidade: null });
 
   useEffect(() => {
     axios.get(`${API_URL}/api/estados`)
@@ -49,39 +51,48 @@ function App() {
   }, [selectedCidade, selectedEstado, suggestedIpInfo]);
 
   const fetchTrends = useCallback((isInitialSearch = false) => {
-     if (platformKeyword) {
+    const keyword = extractKeywordFromUrl(platformUrl);
+    if (keyword) {
       if (isInitialSearch) setIsLoadingTrends(true);
-      axios.get(`${API_URL}/api/trends/${platformKeyword}`)
+      axios.get(`${API_URL}/api/trends/${keyword}`)
         .then(res => {
           setTrendsData(res.data);
           if (!isInitialSearch) toast.success('Dados de popularidade atualizados!');
+          
+          if (isInitialSearch) {
+            const topState = res.data.sort((a, b) => b.interesse - a.interesse)[0];
+            axios.get(`${API_URL}/api/most-popular-city/${keyword}/${topState.sigla}`)
+              .then(cityRes => {
+                const estado = estados.find(e => e.sigla === topState.sigla);
+                setMostPopular({ estado: estado ? estado.nome : topState.sigla, cidade: cityRes.data.nome });
+              })
+              .catch(() => toast.error("Falha ao buscar a cidade mais popular."));
+          }
         })
         .catch(() => toast.error("Falha ao buscar popularidade."))
         .finally(() => setIsLoadingTrends(false));
     }
-  }, [platformKeyword]);
+  }, [platformUrl, estados]);
 
   useEffect(() => {
     fetchIp();
   }, [fetchIp]);
 
-  useEffect(() => {
-    const refreshData = () => {
-      console.log("Atualizando dados automaticamente...");
-      if (selectedCidade && selectedEstado && platformKeyword) {
-        fetchIp();
-        fetchTrends(false);
-      }
-    };
-    const intervalId = setInterval(refreshData, 4000);
-    return () => clearInterval(intervalId);
-  }, [selectedCidade, selectedEstado, platformKeyword, fetchIp, fetchTrends]);
+  const extractKeywordFromUrl = (url) => {
+    try {
+      const hostname = new URL(url).hostname;
+      const parts = hostname.split('.');
+      return parts.length > 2 ? parts[1] : parts[0];
+    } catch (error) {
+      return url;
+    }
+  };
 
   const handlePlatformSearch = () => {
-    if (platformKeyword) {
+    if (platformUrl) {
       fetchTrends(true);
     } else {
-      toast.error("Por favor, digite uma plataforma.");
+      toast.error("Por favor, digite a URL da plataforma.");
     }
   }
   
@@ -106,9 +117,11 @@ function App() {
         </header>
         
         <div className="mb-4 flex gap-2">
-          <input type="text" value={platformKeyword} onChange={(e) => setPlatformKeyword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handlePlatformSearch()} placeholder="Digite a plataforma..." className="w-full bg-gray-800 border-2 border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all"/>
+          <input type="text" value={platformUrl} onChange={(e) => setPlatformUrl(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handlePlatformSearch()} placeholder="Digite a URL da plataforma..." className="w-full bg-gray-800 border-2 border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all"/>
           <button onClick={handlePlatformSearch} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">Analisar</button>
         </div>
+
+        <MostPopular estado={mostPopular.estado} cidade={mostPopular.cidade} />
 
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg p-1 flex justify-around mb-4">
           <button onClick={() => setActiveView('estados')} className={`w-full py-2 rounded-md font-semibold transition-colors text-sm ${activeView === 'estados' ? 'bg-cyan-600' : 'text-gray-400 hover:bg-gray-700'}`}>1. ESTADOS</button>
@@ -119,10 +132,10 @@ function App() {
         <main className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg p-6 min-h-[50vh]">
           {activeView === 'estados' && <EstadoList estados={estados} selectedEstado={selectedEstado} onEstadoClick={handleEstadoClick} />}
           {activeView === 'cidades' && <CidadeList cidades={cidades} selectedEstado={selectedEstado} selectedCidade={selectedCidade} onCidadeClick={handleCidadeClick} isLoading={isLoadingCidades} />}
-          {activeView === 'info' && <InfoPanel selectedCidade={selectedCidade} suggestedIpInfo={suggestedIpInfo} isLoadingIp={isLoadingIp} />}
+          {activeView === 'info' && <InfoPanel selectedCidade={selectedCidade} suggestedIpInfo={suggestedIpInfo} isLoadingIp={isLoadingIp} platformUrl={platformUrl} />}
         </main>
         
-        {platformKeyword && trendsData.length > 0 && (
+        {platformUrl && trendsData.length > 0 && (
           <div className="mt-4">
             <TopStatesChart trendsData={trendsData} isLoading={isLoadingTrends} />
           </div>
