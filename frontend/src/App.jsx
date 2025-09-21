@@ -5,7 +5,7 @@ import EstadoList from './components/EstadoList';
 import CidadeList from './components/CidadeList';
 import InfoPanel from './components/InfoPanel';
 import MostPopular from './components/MostPopular';
-import AnalysisPanel from './components/AnalysisPanel'; // Importe o novo componente
+import AnalysisPanel from './components/AnalysisPanel';
 import toast, { Toaster } from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -23,7 +23,7 @@ function App() {
   const [trendsData, setTrendsData] = useState([]);
   const [activeView, setActiveView] = useState('estados');
   const [mostPopular, setMostPopular] = useState({ estado: null, cidade: null });
-  const [clickData, setClickData] = useState([]); // Novo estado para dados de cliques
+  const [clickData, setClickData] = useState([]);
 
   useEffect(() => {
     axios.get(`${API_URL}/api/estados`)
@@ -70,9 +70,7 @@ function App() {
     if (keyword) {
       setIsLoadingTrends(true);
       
-      // Busca dados de popularidade (Google Trends)
       const trendsRequest = axios.get(`${API_URL}/api/trends/${keyword}`);
-      // Busca dados de cliques do nosso banco de dados
       const clicksRequest = axios.get(`${API_URL}/api/click-analysis/${keyword}`);
 
       Promise.all([trendsRequest, clicksRequest])
@@ -121,7 +119,6 @@ function App() {
       return;
     }
 
-    // Registra o clique no backend
     const keyword = extractKeywordFromUrl(platformUrl);
     axios.post(`${API_URL}/api/track-click`, {
       platform: keyword,
@@ -129,7 +126,62 @@ function App() {
       estado: selectedEstado.sigla,
     }).catch(err => console.error("Falha ao registrar clique:", err));
 
-    const newTabContent = `...`; // O HTML da tela de carregamento que já fizemos
+    // Conteúdo HTML e CSS para a nova página de carregamento
+    const newTabContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Conectando...</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+        <style>
+          body {
+            background-color: #111827;
+            color: #d1d5db;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+          }
+          .container {
+            text-align: center;
+          }
+          h1 {
+            font-size: 2rem;
+            color: #ffffff;
+            margin-bottom: 1rem;
+          }
+          p {
+            font-size: 1.1rem;
+          }
+          .spinner {
+            border: 5px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            border-top: 5px solid #22d3ee;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+          }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>Conectando à plataforma...</h1>
+          <p>Por favor, aguarde. Você será redirecionado em breve.</p>
+          <div class="spinner"></div>
+        </div>
+      </body>
+      </html>
+    `;
 
     const newTab = window.open('', '_blank');
     if (!newTab) {
