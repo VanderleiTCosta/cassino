@@ -1,4 +1,3 @@
-// src/App.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import TopStatesChart from './components/TopStatesChart';
@@ -6,6 +5,7 @@ import EstadoList from './components/EstadoList';
 import CidadeList from './components/CidadeList';
 import InfoPanel from './components/InfoPanel';
 import MostPopular from './components/MostPopular';
+import LoadingModal from './components/LoadingModal'; // Importe o novo componente
 import toast, { Toaster } from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -23,6 +23,10 @@ function App() {
   const [trendsData, setTrendsData] = useState([]);
   const [activeView, setActiveView] = useState('estados');
   const [mostPopular, setMostPopular] = useState({ estado: null, cidade: null });
+
+  // Estados para o modal de carregamento
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
 
   useEffect(() => {
     axios.get(`${API_URL}/api/estados`)
@@ -107,9 +111,29 @@ function App() {
     setActiveView('info');
   };
 
+  const handleConnectClick = () => {
+    setIsModalOpen(true);
+    setModalMessage('Checando IP...');
+
+    setTimeout(() => {
+      setModalMessage('Conectando ao IP...');
+
+      setTimeout(() => {
+        setIsModalOpen(false);
+        let url = platformUrl;
+        if (!/^https?:\/\//i.test(url)) {
+            url = 'https://' + url;
+        }
+        window.open(url, '_blank');
+      }, 5000); // Espera 5 segundos para redirecionar
+
+    }, 2000); // Espera 2 segundos para mudar a mensagem
+  };
+
   return (
     <div className="bg-gray-900 min-h-screen text-white p-4 font-sans flex flex-col items-center">
       <Toaster position="top-center" reverseOrder={false} toastOptions={{ className: 'bg-gray-800 text-white', }} />
+      <LoadingModal isOpen={isModalOpen} message={modalMessage} />
       <div className="w-full max-w-md mx-auto">
         <header className="text-center my-6">
             <h1 className="text-3xl font-bold text-white tracking-wider">PLATFORM <span className="text-cyan-400">ANALYTICS</span></h1>
@@ -132,7 +156,7 @@ function App() {
         <main className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg p-6 min-h-[50vh]">
           {activeView === 'estados' && <EstadoList estados={estados} selectedEstado={selectedEstado} onEstadoClick={handleEstadoClick} />}
           {activeView === 'cidades' && <CidadeList cidades={cidades} selectedEstado={selectedEstado} selectedCidade={selectedCidade} onCidadeClick={handleCidadeClick} isLoading={isLoadingCidades} />}
-          {activeView === 'info' && <InfoPanel selectedCidade={selectedCidade} suggestedIpInfo={suggestedIpInfo} isLoadingIp={isLoadingIp} platformUrl={platformUrl} />}
+          {activeView === 'info' && <InfoPanel selectedCidade={selectedCidade} suggestedIpInfo={suggestedIpInfo} isLoadingIp={isLoadingIp} onConnectClick={handleConnectClick} />}
         </main>
         
         {platformUrl && trendsData.length > 0 && (
