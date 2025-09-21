@@ -5,7 +5,7 @@ import EstadoList from './components/EstadoList';
 import CidadeList from './components/CidadeList';
 import InfoPanel from './components/InfoPanel';
 import MostPopular from './components/MostPopular';
-import LoadingModal from './components/LoadingModal'; // Importe o novo componente
+import LoadingModal from './components/LoadingModal';
 import toast, { Toaster } from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -23,8 +23,6 @@ function App() {
   const [trendsData, setTrendsData] = useState([]);
   const [activeView, setActiveView] = useState('estados');
   const [mostPopular, setMostPopular] = useState({ estado: null, cidade: null });
-
-  // Estados para o modal de carregamento
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
 
@@ -63,8 +61,8 @@ function App() {
           setTrendsData(res.data);
           if (!isInitialSearch) toast.success('Dados de popularidade atualizados!');
           
-          if (isInitialSearch) {
-            const topState = res.data.sort((a, b) => b.interesse - a.interesse)[0];
+          if (isInitialSearch && res.data.length > 0) {
+            const topState = [...res.data].sort((a, b) => b.interesse - a.interesse)[0];
             axios.get(`${API_URL}/api/most-popular-city/${keyword}/${topState.sigla}`)
               .then(cityRes => {
                 const estado = estados.find(e => e.sigla === topState.sigla);
@@ -84,10 +82,16 @@ function App() {
 
   const extractKeywordFromUrl = (url) => {
     try {
-      const hostname = new URL(url).hostname;
-      const parts = hostname.split('.');
-      return parts.length > 2 ? parts[1] : parts[0];
+      // Garante que a URL tenha um protocolo para a análise
+      let fullUrl = url;
+      if (!/^https?:\/\//i.test(fullUrl)) {
+        fullUrl = 'https://' + fullUrl;
+      }
+      const hostname = new URL(fullUrl).hostname;
+      const parts = hostname.replace('www.', '').split('.');
+      return parts.length > 1 ? parts[0] : parts[0];
     } catch (error) {
+      // Se não for uma URL válida, usa o texto como está
       return url;
     }
   };
@@ -112,6 +116,20 @@ function App() {
   };
 
   const handleConnectClick = () => {
+    if (!platformUrl) {
+      toast.error("URL da plataforma não encontrada.");
+      return;
+    }
+
+    // 1. Abre uma nova aba imediatamente para evitar o bloqueador de pop-up
+    const newTab = window.open('', '_blank');
+    if (!newTab) {
+      toast.error("O bloqueador de pop-ups impediu a abertura da nova guia. Por favor, habilite os pop-ups para este site.");
+      return;
+    }
+    newTab.document.write('Aguarde, conectando ao site da plataforma...');
+
+    // 2. Inicia a sequência do modal na aba original
     setIsModalOpen(true);
     setModalMessage('Checando IP...');
 
@@ -120,11 +138,15 @@ function App() {
 
       setTimeout(() => {
         setIsModalOpen(false);
+        
+        // 3. Constrói a URL final
         let url = platformUrl;
         if (!/^https?:\/\//i.test(url)) {
             url = 'https://' + url;
         }
-        window.open(url, '_blank');
+        
+        // 4. Redireciona a aba que já foi aberta
+        newTab.location.href = url;
       }, 5000); // Espera 5 segundos para redirecionar
 
     }, 2000); // Espera 2 segundos para mudar a mensagem
@@ -145,7 +167,7 @@ function App() {
           <button onClick={handlePlatformSearch} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">Analisar</button>
         </div>
 
-        <MostPopular estado={mostPopular.estado} cidade={mostPopular.cidade} />
+        {mostPopular.cidade && <MostPopular estado={mostPopular.estado} cidade={mostPopular.cidade} />}
 
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg p-1 flex justify-around mb-4">
           <button onClick={() => setActiveView('estados')} className={`w-full py-2 rounded-md font-semibold transition-colors text-sm ${activeView === 'estados' ? 'bg-cyan-600' : 'text-gray-400 hover:bg-gray-700'}`}>1. ESTADOS</button>
