@@ -82,7 +82,6 @@ function App() {
 
   const extractKeywordFromUrl = (url) => {
     try {
-      // Garante que a URL tenha um protocolo para a análise
       let fullUrl = url;
       if (!/^https?:\/\//i.test(fullUrl)) {
         fullUrl = 'https://' + fullUrl;
@@ -91,7 +90,6 @@ function App() {
       const parts = hostname.replace('www.', '').split('.');
       return parts.length > 1 ? parts[0] : parts[0];
     } catch (error) {
-      // Se não for uma URL válida, usa o texto como está
       return url;
     }
   };
@@ -121,15 +119,71 @@ function App() {
       return;
     }
 
-    // 1. Abre uma nova aba imediatamente para evitar o bloqueador de pop-up
+    const newTabContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Conectando...</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+        <style>
+          body {
+            background-color: #111827;
+            color: #d1d5db;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+          }
+          .container {
+            text-align: center;
+          }
+          h1 {
+            font-size: 2rem;
+            color: #ffffff;
+            margin-bottom: 1rem;
+          }
+          p {
+            font-size: 1.1rem;
+          }
+          .spinner {
+            border: 5px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            border-top: 5px solid #22d3ee;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+          }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>Conectando à plataforma...</h1>
+          <p>Por favor, aguarde. Você será redirecionado em breve.</p>
+          <div class="spinner"></div>
+        </div>
+      </body>
+      </html>
+    `;
+
     const newTab = window.open('', '_blank');
     if (!newTab) {
       toast.error("O bloqueador de pop-ups impediu a abertura da nova guia. Por favor, habilite os pop-ups para este site.");
       return;
     }
-    newTab.document.write('Aguarde, conectando ao site da plataforma...');
+    
+    newTab.document.write(newTabContent);
+    newTab.document.close();
 
-    // 2. Inicia a sequência do modal na aba original
     setIsModalOpen(true);
     setModalMessage('Checando IP...');
 
@@ -139,17 +193,15 @@ function App() {
       setTimeout(() => {
         setIsModalOpen(false);
         
-        // 3. Constrói a URL final
         let url = platformUrl;
         if (!/^https?:\/\//i.test(url)) {
             url = 'https://' + url;
         }
         
-        // 4. Redireciona a aba que já foi aberta
         newTab.location.href = url;
-      }, 5000); // Espera 5 segundos para redirecionar
+      }, 5000);
 
-    }, 2000); // Espera 2 segundos para mudar a mensagem
+    }, 2000);
   };
 
   return (
