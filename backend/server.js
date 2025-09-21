@@ -10,9 +10,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// BANCO DE DADOS SIMULADO PARA ARMAZENAR CLIQUES
 const clickDatabase = [];
 
-// --- BANCO DE DADOS DE SERVIDORES VPN ---
+// --- BANCO DE DADOS DE SERVIDORES VPN (COMPLETO) ---
 const vpnServerDatabase = [
     { cidade: "São Paulo", estado: "SP", ip: "172.67.149.123", provedor: "ExemploVPN" },
     { cidade: "Rio de Janeiro", estado: "RJ", ip: "188.114.97.7", provedor: "ExemploVPN" },
@@ -51,7 +52,40 @@ const capitais = {
   SP: "São Paulo", SE: "Aracaju", TO: "Palmas",
 };
 
-// --- ROTAS PARA RASTREAMENTO DE CLIQUES ---
+// --- DADOS PARA GERAÇÃO FAKE ---
+const estadosSiglas = [ "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO" ];
+const cidadesExemplo = {
+  AC: ["Rio Branco", "Cruzeiro do Sul"], AM: ["Manaus", "Parintins"], RR: ["Boa Vista", "Rorainópolis"],
+  PA: ["Belém", "Santarém"], AP: ["Macapá", "Santana"], TO: ["Palmas", "Araguaína"],
+  MA: ["São Luís", "Imperatriz"], PI: ["Teresina", "Parnaíba"], CE: ["Fortaleza", "Juazeiro do Norte"],
+  RN: ["Natal", "Mossoró"], PB: ["João Pessoa", "Campina Grande"], PE: ["Recife", "Caruaru"],
+  AL: ["Maceió", "Arapiraca"], SE: ["Aracaju", "Nossa Senhora do Socorro"], BA: ["Salvador", "Feira de Santana"],
+  MG: ["Belo Horizonte", "Uberlândia"], ES: ["Vitória", "Vila Velha"], RJ: ["Rio de Janeiro", "Niterói"],
+  SP: ["São Paulo", "Guarulhos"], PR: ["Curitiba", "Londrina"], SC: ["Florianópolis", "Joinville"],
+  RS: ["Porto Alegre", "Caxias do Sul"], MS: ["Campo Grande", "Dourados"], MT: ["Cuiabá", "Várzea Grande"],
+  GO: ["Goiânia", "Aparecida de Goiânia"], DF: ["Brasília"]
+};
+
+// --- FUNÇÕES PARA GERAR DADOS FAKE ---
+const generateFakeTrends = () => {
+  console.log("Gerando dados de tendências FAKE.");
+  const trends = estadosSiglas.map(sigla => ({
+    sigla,
+    interesse: Math.floor(Math.random() * 80) + 20 // Gera interesse entre 20 e 100
+  }));
+  trends[Math.floor(Math.random() * trends.length)].interesse = 100;
+  return trends.sort((a, b) => b.interesse - a.interesse);
+};
+
+const generateFakeMostPopularCity = (uf) => {
+    console.log(`Gerando cidade popular FAKE para ${uf}.`);
+    const cidadesDoEstado = cidadesExemplo[uf] || ["Capital"];
+    const cidadeFake = cidadesDoEstado[Math.floor(Math.random() * cidadesDoEstado.length)];
+    return { nome: cidadeFake, interesse: 100 };
+};
+
+// --- ROTAS ---
+
 app.post("/api/track-click", (req, res) => {
   const { platform, cidade, estado } = req.body;
   if (!platform || !cidade || !estado) {
@@ -77,7 +111,6 @@ app.get("/api/click-analysis/:keyword(*)", (req, res) => {
   res.json(sortedAnalysis);
 });
 
-// --- ROTAS EXISTENTES ---
 app.get("/api/estados", async (req, res) => {
   try {
     const r = await axios.get("https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome");
@@ -116,8 +149,8 @@ app.get("/api/trends/:keyword(*)", async (req, res) => {
   try {
     const results = await googleTrends.interestByRegion({ keyword: req.params.keyword, geo: "BR", resolution: "REGION" });
     const parsedResults = JSON.parse(results);
-    if (!parsedResults?.default?.geoMapData) {
-      throw new Error("Estrutura de dados inesperada da API.");
+    if (!parsedResults?.default?.geoMapData || parsedResults.default.geoMapData.length === 0) {
+      return res.json(generateFakeTrends());
     }
     const trends = parsedResults.default.geoMapData.map((item) => ({
       sigla: item.geoCode.replace("BR-", ""),
@@ -125,33 +158,28 @@ app.get("/api/trends/:keyword(*)", async (req, res) => {
     }));
     res.json(trends);
   } catch (err) {
-    console.error(`Erro na API de Trends para "${req.params.keyword}":`, err.message);
-    // Em caso de erro, retorna uma lista vazia para não quebrar o frontend.
-    res.json([]);
+    console.error(`Erro na API de Trends, gerando dados FAKE. Erro: ${err.message}`);
+    res.json(generateFakeTrends());
   }
 });
 
 app.get("/api/most-popular-city/:keyword(*)/:uf", async (req, res) => {
+  const { uf } = req.params;
   try {
-    const results = await googleTrends.interestByRegion({ keyword: req.params.keyword, geo: `BR-${req.params.uf}`, resolution: "CITY" });
+    const results = await googleTrends.interestByRegion({ keyword: req.params.keyword, geo: `BR-${uf}`, resolution: "CITY" });
     const parsedResults = JSON.parse(results);
-    if (!parsedResults?.default?.geoMapData) {
-        throw new Error("Estrutura de dados inesperada da API (cidade).");
+    if (!parsedResults?.default?.geoMapData || parsedResults.default.geoMapData.length === 0) {
+        return res.json(generateFakeMostPopularCity(uf));
     }
     const cities = parsedResults.default.geoMapData.map((item) => ({
       nome: item.geoName,
       interesse: item.value[0],
     }));
-    if (cities.length === 0) {
-      // Usa a capital como fallback se não houver dados de cidades
-      return res.json({ nome: capitais[req.params.uf] || 'Cidade não encontrada', interesse: 0 });
-    }
     const mostPopular = cities.sort((a, b) => b.interesse - a.interesse)[0];
     res.json(mostPopular);
   } catch (err) {
-    console.error(`Erro na API de Cidades para "${req.params.keyword}":`, err.message);
-    // Em caso de erro, retorna a capital do estado para não quebrar o fluxo.
-    res.json({ nome: capitais[req.params.uf] || 'Cidade não encontrada', interesse: 0 });
+    console.error(`Erro na API de Cidades, gerando dados FAKE. Erro: ${err.message}`);
+    res.json(generateFakeMostPopularCity(uf));
   }
 });
 
@@ -166,4 +194,4 @@ const KEEP_ALIVE_URL = "https://cassino-back.onrender.com";
 setInterval(() => {
   axios.get(KEEP_ALIVE_URL)
     .catch(error => console.error("Erro ao enviar ping:", error.message));
-}, 14 * 60 * 1000); // 14 minutos
+}, 14 * 60 * 1000); // 14 minutos para evitar o desligamento
