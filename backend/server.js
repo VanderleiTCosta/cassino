@@ -26,7 +26,156 @@ const vpnServerDatabase = [
     ip: "188.114.97.7",
     provedor: "ExemploVPN",
   },
-  // ... (o resto do seu banco de dados de VPNs)
+  {
+    cidade: "Fortaleza",
+    estado: "CE",
+    ip: "162.159.135.234",
+    provedor: "SuperVPN",
+  },
+  {
+    cidade: "Rio Branco",
+    estado: "AC",
+    ip: "177.128.10.54",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Maceió",
+    estado: "AL",
+    ip: "189.45.20.112",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Macapá",
+    estado: "AP",
+    ip: "200.215.30.98",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Manaus",
+    estado: "AM",
+    ip: "201.55.40.15",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Salvador",
+    estado: "BA",
+    ip: "177.85.50.201",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Brasília",
+    estado: "DF",
+    ip: "186.202.60.44",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Vitória",
+    estado: "ES",
+    ip: "189.125.70.89",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Goiânia",
+    estado: "GO",
+    ip: "200.188.80.176",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "São Luís",
+    estado: "MA",
+    ip: "177.135.90.231",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Cuiabá",
+    estado: "MT",
+    ip: "186.225.100.12",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Campo Grande",
+    estado: "MS",
+    ip: "201.85.110.67",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Belo Horizonte",
+    estado: "MG",
+    ip: "177.95.120.143",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Belém",
+    estado: "PA",
+    ip: "189.88.130.22",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "João Pessoa",
+    estado: "PB",
+    ip: "200.222.140.88",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Curitiba",
+    estado: "PR",
+    ip: "177.105.150.199",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Recife",
+    estado: "PE",
+    ip: "186.212.160.33",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Teresina",
+    estado: "PI",
+    ip: "201.65.170.101",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Natal",
+    estado: "RN",
+    ip: "177.155.180.55",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Porto Alegre",
+    estado: "RS",
+    ip: "189.65.190.132",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Porto Velho",
+    estado: "RO",
+    ip: "200.198.200.77",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Boa Vista",
+    estado: "RR",
+    ip: "177.185.210.118",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Florianópolis",
+    estado: "SC",
+    ip: "186.235.220.201",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Aracaju",
+    estado: "SE",
+    ip: "201.95.230.15",
+    provedor: "Provedor Local (Simulado)",
+  },
+  {
+    cidade: "Palmas",
+    estado: "TO",
+    ip: "177.195.240.92",
+    provedor: "Provedor Local (Simulado)",
+  },
 ];
 const capitais = {
   AC: "Rio Branco",
@@ -146,7 +295,6 @@ app.get("/api/trends/:keyword(*)", async (req, res) => {
       resolution: "REGION",
     });
 
-    // Tenta fazer o parse do JSON de forma segura
     let parsedResults;
     try {
       parsedResults = JSON.parse(results);
@@ -156,6 +304,15 @@ app.get("/api/trends/:keyword(*)", async (req, res) => {
         results
       );
       throw new Error("Resposta inválida da API de tendências.");
+    }
+
+    // Verifica se a resposta tem a estrutura esperada antes de continuar
+    if (
+      !parsedResults ||
+      !parsedResults.default ||
+      !parsedResults.default.geoMapData
+    ) {
+      throw new Error("Estrutura de dados inesperada da API de tendências.");
     }
 
     const trends = parsedResults.default.geoMapData.map((item) => ({
@@ -197,17 +354,26 @@ app.get("/api/most-popular-city/:keyword(*)/:uf", async (req, res) => {
       throw new Error("Resposta inválida da API de tendências.");
     }
 
+    // Verifica se a resposta tem a estrutura esperada
+    if (
+      !parsedResults ||
+      !parsedResults.default ||
+      !parsedResults.default.geoMapData
+    ) {
+      throw new Error(
+        "Estrutura de dados inesperada da API de tendências (cidade)."
+      );
+    }
+
     const cities = parsedResults.default.geoMapData.map((item) => ({
       nome: item.geoName,
       interesse: item.value[0],
     }));
 
     if (cities.length === 0) {
-      return res
-        .status(404)
-        .json({
-          error: "Nenhuma cidade encontrada para esta plataforma no estado.",
-        });
+      // Se não houver cidades, usa a capital do estado como fallback
+      const capital = capitais[req.params.uf];
+      return res.json({ nome: capital, interesse: 0 });
     }
 
     const mostPopular = cities.sort((a, b) => b.interesse - a.interesse)[0];
@@ -217,9 +383,9 @@ app.get("/api/most-popular-city/:keyword(*)/:uf", async (req, res) => {
       `Erro na API de Cidades para keyword "${req.params.keyword}":`,
       err.message
     );
-    res
-      .status(500)
-      .json({ error: "Não foi possível buscar a cidade mais popular." });
+    // Como fallback, retorna a capital do estado para não quebrar o fluxo
+    const capital = capitais[req.params.uf];
+    res.json({ nome: capital, interesse: 0 });
   }
 });
 
@@ -235,4 +401,4 @@ setInterval(() => {
   axios
     .get(KEEP_ALIVE_URL)
     .catch((error) => console.error("Erro ao enviar ping:", error.message));
-}, 40 * 1000);
+}, 14 * 60 * 1000); // 14 minutos
