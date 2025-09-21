@@ -15,7 +15,7 @@ const AnalysisPanel = ({ trendsData, clickData, platform }) => {
   // Desestrutura os dados de cliques, com valores padrão para segurança
   const { total: totalClicks = 0, breakdown: allClicks = [] } = clickData || {};
 
-  // --- NOVA LÓGICA CONECTADA ---
+  // --- LÓGICA CONECTADA ---
 
   // 1. Encontra os 5 estados com maior interesse de busca
   const top5StatesByInterest = [...trendsData]
@@ -44,7 +44,7 @@ const AnalysisPanel = ({ trendsData, clickData, platform }) => {
       return (
         <>
           Dentro dos estados mais populares, a plataforma tem o melhor desempenho de cliques em <span className="font-bold text-cyan-400">{topClickCity.location}</span>. 
-          Esta é a melhor região para fazer suas apostas.
+          Esta é a melhor região para focar suas campanhas.
         </>
       );
     }
@@ -53,7 +53,7 @@ const AnalysisPanel = ({ trendsData, clickData, platform }) => {
       return (
         <>
           O maior interesse de busca está no estado de <span className="font-bold text-cyan-400">{topInterestState.sigla}</span>. 
-          Considere realizar apostas nesta região.
+          Considere criar campanhas de reconhecimento de marca nesta região para gerar mais cliques.
         </>
       );
     }
@@ -81,7 +81,7 @@ const AnalysisPanel = ({ trendsData, clickData, platform }) => {
       </div>
 
       <div>
-        <h3 className="flex items-center gap-2 text-lg font-bold text-cyan-400"><FaMousePointer /> Top Cidades por Cliques (Nos Estados Populares)</h3>
+        <h3 className="flex items-center gap-2 text-lg font-bold text-cyan-400">Top Cidades por Cliques (Nos Estados Populares)</h3>
         <ul className="mt-2 space-y-2">
           {clicksInTopStates.length > 0 ? (
             clicksInTopStates.slice(0, 5).map(item => (
@@ -97,7 +97,7 @@ const AnalysisPanel = ({ trendsData, clickData, platform }) => {
       </div>
 
       <div>
-        <h3 className="flex items-center gap-2 text-lg font-bold text-cyan-400"><FaChartLine /> Top 5 Estados por Interesse</h3>
+        <h3 className="flex items-center gap-2 text-lg font-bold text-cyan-400">Top 5 Estados por Interesse</h3>
         <ul className="mt-2 space-y-2">
           {top5StatesByInterest.length > 0 ? (
              top5StatesByInterest.map(item => (
