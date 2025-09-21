@@ -5,7 +5,7 @@ import EstadoList from './components/EstadoList';
 import CidadeList from './components/CidadeList';
 import InfoPanel from './components/InfoPanel';
 import MostPopular from './components/MostPopular';
-import LoadingModal from './components/LoadingModal';
+// O LoadingModal foi removido pois não é mais necessário
 import toast, { Toaster } from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -23,8 +23,6 @@ function App() {
   const [trendsData, setTrendsData] = useState([]);
   const [activeView, setActiveView] = useState('estados');
   const [mostPopular, setMostPopular] = useState({ estado: null, cidade: null });
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMessage, setModalMessage] = useState('');
 
   useEffect(() => {
     axios.get(`${API_URL}/api/estados`)
@@ -119,6 +117,7 @@ function App() {
       return;
     }
 
+    // Conteúdo HTML e CSS para a nova página de carregamento
     const newTabContent = `
       <!DOCTYPE html>
       <html>
@@ -184,30 +183,19 @@ function App() {
     newTab.document.write(newTabContent);
     newTab.document.close();
 
-    setIsModalOpen(true);
-    setModalMessage('Checando IP...');
-
+    // Redireciona a nova aba após 7 segundos
     setTimeout(() => {
-      setModalMessage('Conectando ao IP...');
-
-      setTimeout(() => {
-        setIsModalOpen(false);
-        
-        let url = platformUrl;
-        if (!/^https?:\/\//i.test(url)) {
-            url = 'https://' + url;
-        }
-        
-        newTab.location.href = url;
-      }, 5000);
-
-    }, 2000);
+      let url = platformUrl;
+      if (!/^https?:\/\//i.test(url)) {
+          url = 'https://' + url;
+      }
+      newTab.location.href = url;
+    }, 7000); // Tempo total de espera
   };
 
   return (
     <div className="bg-gray-900 min-h-screen text-white p-4 font-sans flex flex-col items-center">
       <Toaster position="top-center" reverseOrder={false} toastOptions={{ className: 'bg-gray-800 text-white', }} />
-      <LoadingModal isOpen={isModalOpen} message={modalMessage} />
       <div className="w-full max-w-md mx-auto">
         <header className="text-center my-6">
             <h1 className="text-3xl font-bold text-white tracking-wider">PLATFORM <span className="text-cyan-400">ANALYTICS</span></h1>
