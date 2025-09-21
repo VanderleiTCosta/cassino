@@ -260,8 +260,8 @@ app.get("/api/ip/:uf/:cidade", (req, res) => {
   res.json(resp);
 });
 
-// --- ROTA DE TRENDS QUE GERA DADOS ALEATÓRIOS ---
-app.get("/api/trends/:keyword", async (req, res) => {
+// --- ROTA DE TRENDS ---
+app.get("/api/trends/:keyword(*)", async (req, res) => {
   try {
     const results = await googleTrends.interestByRegion({
       keyword: req.params.keyword,
@@ -281,7 +281,8 @@ app.get("/api/trends/:keyword", async (req, res) => {
   }
 });
 
-app.get("/api/most-popular-city/:keyword/:uf", async (req, res) => {
+// --- ROTA DE CIDADE MAIS POPULAR ---
+app.get("/api/most-popular-city/:keyword(*)/:uf", async (req, res) => {
     try {
         const results = await googleTrends.interestByRegion({
             keyword: req.params.keyword,
@@ -301,7 +302,6 @@ app.get("/api/most-popular-city/:keyword/:uf", async (req, res) => {
         res.status(500).json({ error: 'Falha ao buscar a cidade mais popular.' });
     }
 });
-
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
