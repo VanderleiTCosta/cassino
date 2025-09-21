@@ -27,7 +27,7 @@ const AnalysisPanel = ({ trendsData, clickData, platform }) => {
       return (
         <>
           A plataforma tem o melhor desempenho de cliques em <span className="font-bold text-cyan-400">{topClickCity.location}</span>. 
-          Esta é a melhor região para focar suas campanhas.
+          Esta é a melhor região para focar suas apostas.
         </>
       );
     }
@@ -36,7 +36,7 @@ const AnalysisPanel = ({ trendsData, clickData, platform }) => {
       return (
         <>
           O maior interesse de busca está no estado de <span className="font-bold text-cyan-400">{topInterestState.sigla}</span>. 
-          Considere criar campanhas de reconhecimento de marca nesta região.
+          Considere fazer apostas nesta região.
         </>
       );
     }
