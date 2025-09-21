@@ -12,22 +12,39 @@ const AnalysisPanel = ({ trendsData, clickData, platform }) => {
     );
   }
 
-  // Desestrutura os dados de cliques. Se for undefined, usa valores padrão.
-  const { total: totalClicks = 0, breakdown: clickBreakdown = [] } = clickData || {};
+  // Desestrutura os dados de cliques, com valores padrão para segurança
+  const { total: totalClicks = 0, breakdown: allClicks = [] } = clickData || {};
 
-  const topInterestState = [...trendsData].sort((a, b) => b.interesse - a.interesse)[0];
-  const topClickCity = clickBreakdown.length > 0 ? clickBreakdown[0] : null;
+  // --- NOVA LÓGICA CONECTADA ---
+
+  // 1. Encontra os 5 estados com maior interesse de busca
+  const top5StatesByInterest = [...trendsData]
+    .sort((a, b) => b.interesse - a.interesse)
+    .slice(0, 5);
+  const top5StateSiglas = top5StatesByInterest.map(s => s.sigla);
+
+  // 2. Filtra os cliques para mostrar apenas cidades que estão nesses 5 estados
+  const clicksInTopStates = allClicks
+    .filter(item => {
+      const stateSigla = item.location.split(', ')[1]; // Extrai a sigla do estado (ex: "São Paulo, SP" -> "SP")
+      return top5StateSiglas.includes(stateSigla);
+    });
+
+  // 3. Define os "campeões" com base nos dados filtrados e de interesse
+  const topInterestState = top5StatesByInterest.length > 0 ? top5StatesByInterest[0] : null;
+  const topClickCity = clicksInTopStates.length > 0 ? clicksInTopStates[0] : null;
 
   const renderRecommendation = () => {
     if (!topInterestState && !topClickCity) {
       return "Não há dados suficientes para uma recomendação.";
     }
 
+    // A recomendação agora compara a melhor cidade DENTRE OS TOP ESTADOS
     if (topClickCity) {
       return (
         <>
-          A plataforma tem o melhor desempenho de cliques em <span className="font-bold text-cyan-400">{topClickCity.location}</span>. 
-          Esta é a melhor região para focar suas apostas.
+          Dentro dos estados mais populares, a plataforma tem o melhor desempenho de cliques em <span className="font-bold text-cyan-400">{topClickCity.location}</span>. 
+          Esta é a melhor região para fazer suas apostas.
         </>
       );
     }
@@ -36,7 +53,7 @@ const AnalysisPanel = ({ trendsData, clickData, platform }) => {
       return (
         <>
           O maior interesse de busca está no estado de <span className="font-bold text-cyan-400">{topInterestState.sigla}</span>. 
-          Considere fazer apostas nesta região.
+          Considere realizar apostas nesta região.
         </>
       );
     }
@@ -64,26 +81,26 @@ const AnalysisPanel = ({ trendsData, clickData, platform }) => {
       </div>
 
       <div>
-        <h3 className="flex items-center gap-2 text-lg font-bold text-cyan-400"><FaMousePointer /> Top Cidades por Cliques</h3>
+        <h3 className="flex items-center gap-2 text-lg font-bold text-cyan-400"><FaMousePointer /> Top Cidades por Cliques (Nos Estados Populares)</h3>
         <ul className="mt-2 space-y-2">
-          {clickBreakdown.length > 0 ? (
-            clickBreakdown.slice(0, 5).map(item => (
+          {clicksInTopStates.length > 0 ? (
+            clicksInTopStates.slice(0, 5).map(item => (
               <li key={item.location} className="bg-gray-700 p-3 rounded-md flex justify-between">
                 <span>{item.location}</span>
                 <span className="font-bold">{item.clicks.toLocaleString('pt-BR')} clique(s)</span>
               </li>
             ))
           ) : (
-            <p className="text-gray-500">Não há dados de cliques para esta plataforma.</p>
+            <p className="text-gray-500">Não há dados de cliques nos estados mais populares.</p>
           )}
         </ul>
       </div>
 
       <div>
-        <h3 className="flex items-center gap-2 text-lg font-bold text-cyan-400"><FaChartLine /> Top Estados por Interesse</h3>
+        <h3 className="flex items-center gap-2 text-lg font-bold text-cyan-400"><FaChartLine /> Top 5 Estados por Interesse</h3>
         <ul className="mt-2 space-y-2">
-          {trendsData.length > 0 ? (
-             [...trendsData].sort((a, b) => b.interesse - a.interesse).slice(0, 5).map(item => (
+          {top5StatesByInterest.length > 0 ? (
+             top5StatesByInterest.map(item => (
               <li key={item.sigla} className="bg-gray-700 p-3 rounded-md flex justify-between">
                 <span>{item.sigla}</span>
                 <span className="font-bold">Índice {item.interesse}</span>
