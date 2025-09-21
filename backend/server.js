@@ -8,10 +8,8 @@ const googleTrends = require("google-trends-api");
 const app = express();
 
 app.use(cors());
-app.use(express.json()); // Habilita o parsing de JSON no corpo das requisições
+app.use(express.json());
 
-// BANCO DE DADOS SIMULADO PARA ARMAZENAR CLIQUES
-// Em uma aplicação real, você usaria um banco de dados como MongoDB ou PostgreSQL.
 const clickDatabase = [];
 
 // --- BANCO DE DADOS DE SERVIDORES VPN ---
@@ -60,51 +58,33 @@ const capitais = {
   TO: "Palmas",
 };
 
-// --- NOVAS ROTAS PARA RASTREAMENTO DE CLIQUES ---
-
-// Rota para registrar um novo clique
+// --- ROTAS PARA RASTREAMENTO DE CLIQUES ---
 app.post("/api/track-click", (req, res) => {
   const { platform, cidade, estado } = req.body;
   if (!platform || !cidade || !estado) {
-    return res
-      .status(400)
-      .json({ error: "Dados incompletos para rastrear o clique." });
+    return res.status(400).json({ error: "Dados incompletos." });
   }
-
-  clickDatabase.push({
-    platform,
-    cidade,
-    estado,
-    timestamp: new Date(),
-  });
-
-  console.log("Clique registrado:", { platform, cidade, estado });
-  res.status(201).json({ message: "Clique registrado com sucesso!" });
+  clickDatabase.push({ platform, cidade, estado, timestamp: new Date() });
+  res.status(201).json({ message: "Clique registrado." });
 });
 
-// Rota para obter a análise de cliques por plataforma
 app.get("/api/click-analysis/:keyword(*)", (req, res) => {
   const { keyword } = req.params;
-
   const clicksForPlatform = clickDatabase.filter(
     (click) => click.platform === keyword
   );
-
   const analysis = clicksForPlatform.reduce((acc, click) => {
     const location = `${click.cidade}, ${click.estado}`;
     acc[location] = (acc[location] || 0) + 1;
     return acc;
   }, {});
-
   const sortedAnalysis = Object.entries(analysis)
     .map(([location, clicks]) => ({ location, clicks }))
     .sort((a, b) => b.clicks - a.clicks);
-
   res.json(sortedAnalysis);
 });
 
-// --- ROTAS EXISTENTES (sem alterações, exceto pela correção de bug anterior) ---
-
+// --- ROTAS EXISTENTES ---
 app.get("/api/estados", async (req, res) => {
   try {
     const r = await axios.get(
@@ -112,7 +92,7 @@ app.get("/api/estados", async (req, res) => {
     );
     res.json(r.data.map((e) => ({ id: e.id, sigla: e.sigla, nome: e.nome })));
   } catch {
-    res.status(500).json({ error: "Falha ao buscar dados dos estados." });
+    res.status(500).json({ error: "Falha ao buscar estados." });
   }
 });
 
@@ -127,9 +107,7 @@ app.get("/api/cidades/:uf", async (req, res) => {
   } catch {
     res
       .status(500)
-      .json({
-        error: `Falha ao buscar dados das cidades de ${req.params.uf}.`,
-      });
+      .json({ error: `Falha ao buscar cidades de ${req.params.uf}.` });
   }
 });
 
@@ -159,6 +137,7 @@ app.get("/api/ip/:uf/:cidade", (req, res) => {
   });
 });
 
+// ROTA DE TRENDS COM MELHOR TRATAMENTO DE ERRO
 app.get("/api/trends/:keyword(*)", async (req, res) => {
   try {
     const results = await googleTrends.interestByRegion({
@@ -166,17 +145,39 @@ app.get("/api/trends/:keyword(*)", async (req, res) => {
       geo: "BR",
       resolution: "REGION",
     });
-    const parsedResults = JSON.parse(results);
+
+    // Tenta fazer o parse do JSON de forma segura
+    let parsedResults;
+    try {
+      parsedResults = JSON.parse(results);
+    } catch (parseError) {
+      console.error(
+        "Erro ao fazer parse da resposta do Google Trends:",
+        results
+      );
+      throw new Error("Resposta inválida da API de tendências.");
+    }
+
     const trends = parsedResults.default.geoMapData.map((item) => ({
       sigla: item.geoCode.replace("BR-", ""),
       interesse: item.value[0],
     }));
     res.json(trends);
   } catch (err) {
-    res.status(500).json({ error: "Falha ao buscar dados de popularidade." });
+    console.error(
+      `Erro na API de Trends para keyword "${req.params.keyword}":`,
+      err.message
+    );
+    res
+      .status(500)
+      .json({
+        error:
+          "Não foi possível buscar os dados de popularidade. A plataforma pode não ter dados de busca suficientes.",
+      });
   }
 });
 
+// ROTA DE CIDADE MAIS POPULAR COM MELHOR TRATAMENTO DE ERRO
 app.get("/api/most-popular-city/:keyword(*)/:uf", async (req, res) => {
   try {
     const results = await googleTrends.interestByRegion({
@@ -184,15 +185,41 @@ app.get("/api/most-popular-city/:keyword(*)/:uf", async (req, res) => {
       geo: `BR-${req.params.uf}`,
       resolution: "CITY",
     });
-    const parsedResults = JSON.parse(results);
+
+    let parsedResults;
+    try {
+      parsedResults = JSON.parse(results);
+    } catch (parseError) {
+      console.error(
+        "Erro ao fazer parse da resposta do Google Trends (cidade):",
+        results
+      );
+      throw new Error("Resposta inválida da API de tendências.");
+    }
+
     const cities = parsedResults.default.geoMapData.map((item) => ({
       nome: item.geoName,
       interesse: item.value[0],
     }));
+
+    if (cities.length === 0) {
+      return res
+        .status(404)
+        .json({
+          error: "Nenhuma cidade encontrada para esta plataforma no estado.",
+        });
+    }
+
     const mostPopular = cities.sort((a, b) => b.interesse - a.interesse)[0];
     res.json(mostPopular);
   } catch (err) {
-    res.status(500).json({ error: "Falha ao buscar a cidade mais popular." });
+    console.error(
+      `Erro na API de Cidades para keyword "${req.params.keyword}":`,
+      err.message
+    );
+    res
+      .status(500)
+      .json({ error: "Não foi possível buscar a cidade mais popular." });
   }
 });
 
@@ -201,3 +228,11 @@ app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
 
+// --- FUNÇÃO PARA MANTER O SERVIDOR ATIVO ---
+const KEEP_ALIVE_URL = "https://cassino-back.onrender.com";
+
+setInterval(() => {
+  axios
+    .get(KEEP_ALIVE_URL)
+    .catch((error) => console.error("Erro ao enviar ping:", error.message));
+}, 40 * 1000);
