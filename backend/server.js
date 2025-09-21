@@ -200,3 +200,12 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
+
+// --- FUNÇÃO PARA MANTER O SERVIDOR ATIVO ---
+const KEEP_ALIVE_URL = "https://cassino-back.onrender.com"; // Substitua pela URL do seu backend no Render
+
+setInterval(() => {
+  axios.get(KEEP_ALIVE_URL)
+    .then(response => console.log("Ping enviado com sucesso!", new Date()))
+    .catch(error => console.error("Erro ao enviar ping:", error.message));
+}, 40 * 1000); // 40 segundos
