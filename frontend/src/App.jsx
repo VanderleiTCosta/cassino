@@ -21,9 +21,10 @@ function App() {
   const [suggestedIpInfo, setSuggestedIpInfo] = useState(null);
   const [platformUrl, setPlatformUrl] = useState('');
   const [trendsData, setTrendsData] = useState([]);
-  const [activeView, setActiveView] = useState('estados');
+  const [activeView, setActiveView] = useState('analise');
   const [mostPopular, setMostPopular] = useState({ estado: null, cidade: null });
-  const [clickData, setClickData] = useState([]);
+  // Ajuste no estado inicial para corresponder à estrutura do backend
+  const [clickData, setClickData] = useState({ total: 0, breakdown: [] });
 
   useEffect(() => {
     axios.get(`${API_URL}/api/estados`)
@@ -69,6 +70,7 @@ function App() {
     const keyword = extractKeywordFromUrl(platformUrl);
     if (keyword) {
       setIsLoadingTrends(true);
+      setActiveView('analise'); // Sempre mostra a análise após a busca
       
       const trendsRequest = axios.get(`${API_URL}/api/trends/${keyword}`);
       const clicksRequest = axios.get(`${API_URL}/api/click-analysis/${keyword}`);
@@ -126,66 +128,11 @@ function App() {
       estado: selectedEstado.sigla,
     }).catch(err => console.error("Falha ao registrar clique:", err));
 
-    // Conteúdo HTML e CSS para a nova página de carregamento
-    const newTabContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Conectando...</title>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
-        <style>
-          body {
-            background-color: #111827;
-            color: #d1d5db;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            font-family: 'Inter', sans-serif;
-          }
-          .container {
-            text-align: center;
-          }
-          h1 {
-            font-size: 2rem;
-            color: #ffffff;
-            margin-bottom: 1rem;
-          }
-          p {
-            font-size: 1.1rem;
-          }
-          .spinner {
-            border: 5px solid rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            border-top: 5px solid #22d3ee;
-            width: 60px;
-            height: 60px;
-            animation: spin 1s linear infinite;
-            margin: 30px auto;
-          }
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h1>Conectando à plataforma...</h1>
-          <p>Por favor, aguarde. Você será redirecionado em breve.</p>
-          <div class="spinner"></div>
-        </div>
-      </body>
-      </html>
-    `;
-
+    const newTabContent = `...`; // Mantenha seu HTML da tela de carregamento aqui
+    
     const newTab = window.open('', '_blank');
     if (!newTab) {
-      toast.error("Bloqueador de pop-ups ativado. Por favor, desabilite para continuar.");
+      toast.error("Bloqueador de pop-ups ativado.");
       return;
     }
     

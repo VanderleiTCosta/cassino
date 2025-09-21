@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaChartLine, FaMousePointer, FaTrophy } from 'react-icons/fa';
+import { FaChartLine, FaMousePointer, FaTrophy, FaEye } from 'react-icons/fa';
 
 const AnalysisPanel = ({ trendsData, clickData, platform }) => {
 
@@ -12,18 +12,18 @@ const AnalysisPanel = ({ trendsData, clickData, platform }) => {
     );
   }
 
-  // Encontra o estado com maior interesse de busca
+  // Desestrutura os dados de cliques. Se for undefined, usa valores padrão.
+  const { total: totalClicks = 0, breakdown: clickBreakdown = [] } = clickData || {};
+
   const topInterestState = [...trendsData].sort((a, b) => b.interesse - a.interesse)[0];
-  
-  // Encontra a cidade com mais cliques
-  const topClickCity = clickData.length > 0 ? clickData[0] : null;
+  const topClickCity = clickBreakdown.length > 0 ? clickBreakdown[0] : null;
 
   const renderRecommendation = () => {
     if (!topInterestState && !topClickCity) {
       return "Não há dados suficientes para uma recomendação.";
     }
 
-    if (topClickCity && (!topInterestState || topClickCity.clicks > (topInterestState.interesse / 10))) {
+    if (topClickCity) {
       return (
         <>
           A plataforma tem o melhor desempenho de cliques em <span className="font-bold text-cyan-400">{topClickCity.location}</span>. 
@@ -48,6 +48,16 @@ const AnalysisPanel = ({ trendsData, clickData, platform }) => {
     <div className="space-y-6">
       <div>
         <h2 className="flex items-center gap-3 text-2xl font-semibold mb-2 text-gray-300">
+          <FaEye /> Acessos Totais
+        </h2>
+        <div className="bg-gray-700 p-4 rounded-md text-center">
+          <p className="text-4xl font-bold text-white">{totalClicks.toLocaleString('pt-BR')}</p>
+          <p className="text-gray-400">clique(s) registrados para esta plataforma</p>
+        </div>
+      </div>
+
+      <div>
+        <h2 className="flex items-center gap-3 text-2xl font-semibold mb-2 text-gray-300">
           <FaTrophy /> Recomendação Final
         </h2>
         <p className="bg-gray-700 p-4 rounded-md text-white">{renderRecommendation()}</p>
@@ -56,15 +66,15 @@ const AnalysisPanel = ({ trendsData, clickData, platform }) => {
       <div>
         <h3 className="flex items-center gap-2 text-lg font-bold text-cyan-400"><FaMousePointer /> Top Cidades por Cliques</h3>
         <ul className="mt-2 space-y-2">
-          {clickData.length > 0 ? (
-            clickData.slice(0, 5).map(item => (
+          {clickBreakdown.length > 0 ? (
+            clickBreakdown.slice(0, 5).map(item => (
               <li key={item.location} className="bg-gray-700 p-3 rounded-md flex justify-between">
                 <span>{item.location}</span>
-                <span className="font-bold">{item.clicks} clique(s)</span>
+                <span className="font-bold">{item.clicks.toLocaleString('pt-BR')} clique(s)</span>
               </li>
             ))
           ) : (
-            <p className="text-gray-500">Ainda não há dados de cliques para esta plataforma.</p>
+            <p className="text-gray-500">Não há dados de cliques para esta plataforma.</p>
           )}
         </ul>
       </div>
