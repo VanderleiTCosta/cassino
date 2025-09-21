@@ -8,7 +8,7 @@ const app = express();
 
 app.use(cors());
 
-// --- ✅ NOVA FUNÇÃO PARA GERAR DADOS DE POPULARIDADE ALEATÓRIOS ---
+// --- FUNÇÃO PARA GERAR DADOS DE POPULARIDADE ALEATÓRIOS ---
 function generateRandomTrends() {
   const estadosSiglas = [
     "AC",
@@ -39,21 +39,16 @@ function generateRandomTrends() {
     "SE",
     "TO",
   ];
-
-  // Cria uma lista de dados com valores aleatórios entre 20 e 99
   const trends = estadosSiglas.map((sigla) => ({
     sigla: sigla,
-    interesse: Math.floor(Math.random() * 80) + 20, // Gera número entre 20 e 99
+    interesse: Math.floor(Math.random() * 80) + 20,
   }));
-
-  // Escolhe um estado aleatório para ter o interesse máximo de 100
   const topStateIndex = Math.floor(Math.random() * trends.length);
   trends[topStateIndex].interesse = 100;
-
   return trends;
 }
 
-// --- BANCO DE DADOS COMPLETO DE SERVIDORES VPN (REAIS E SIMULADOS) ---
+// --- BANCO DE DADOS DE SERVIDORES VPN ---
 const vpnServerDatabase = [
   {
     cidade: "São Paulo",
@@ -259,6 +254,7 @@ app.get("/api/estados", async (req, res) => {
     res.status(500).json({ error: "Falha ao buscar dados dos estados." });
   }
 });
+
 app.get("/api/cidades/:uf", async (req, res) => {
   try {
     const r = await axios.get(
@@ -275,6 +271,7 @@ app.get("/api/cidades/:uf", async (req, res) => {
       });
   }
 });
+
 app.get("/api/ip/:uf/:cidade", (req, res) => {
   const { uf, cidade } = req.params;
   let s = vpnServerDatabase.find(
@@ -302,7 +299,7 @@ app.get("/api/ip/:uf/:cidade", (req, res) => {
   res.json(resp);
 });
 
-// --- ROTA DE TRENDS AGORA GERA DADOS ALEATÓRIOS ---
+// --- ROTA DE TRENDS QUE GERA DADOS ALEATÓRIOS ---
 app.get("/api/trends/:keyword", (req, res) => {
   const randomTrends = generateRandomTrends();
   console.log(
@@ -313,5 +310,5 @@ app.get("/api/trends/:keyword", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
