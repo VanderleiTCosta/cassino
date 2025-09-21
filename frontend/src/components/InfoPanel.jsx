@@ -5,15 +5,10 @@ const InfoPanel = ({ selectedCidade, suggestedIpInfo, isLoadingIp, platformUrl }
 
   const handleConnect = () => {
     if (platformUrl) {
-      let url = platformUrl;
-      // Adiciona https:// se o protocolo estiver ausente para garantir que seja uma URL válida
-      if (!/^https?:\/\//i.test(url)) {
-        url = 'https://' + url;
-      }
-      // Abre a URL em uma nova aba
-      window.open(url, '_blank');
+      window.location.href = platformUrl;
     }
   };
+
 
   if (!selectedCidade) {
     return (
